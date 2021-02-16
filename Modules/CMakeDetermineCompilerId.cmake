@@ -147,6 +147,23 @@ function(CMAKE_DETERMINE_COMPILER_ID lang flagvar src)
     endif()
   endif()
 
+  if (CMAKE_${lang}_COMPILER_ID STREQUAL "NEC")
+    if (NOT CMALE_${lang}_COMPILER_VERSION)
+      execute_process(
+        COMMAND "${CMAKE_${lang}_COMPILER}" --version
+        OUTPUT_VARIABLE output
+        ERROR_VARIABLE output
+        RESULT_VARIABLE result
+        TIMEOUT 10
+      )
+      if (result EQUAL 0)
+        if (output MATCHES [[\(NCC\) ([0-9]+\.[0-9]+\.[0-9]+)]])
+          set(CMAKE_${lang}_COMPILER_VERSION "${CMAKE_MATCH_1}")
+        endif()
+      endif()
+    endif()
+  endif()
+
   # if the format is unknown after all files have been checked, put "Unknown" in the cache
   if(NOT CMAKE_EXECUTABLE_FORMAT)
     set(CMAKE_EXECUTABLE_FORMAT "Unknown" CACHE INTERNAL "Executable file format")
