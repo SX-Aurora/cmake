@@ -276,10 +276,6 @@ set(_MPI_Fortran_GENERIC_COMPILER_NAMES    mpif95   mpif95_r  mpf95   mpf95_r
                                            mpif90   mpif90_r  mpf90   mpf90_r
                                            mpif77   mpif77_r  mpf77   mpf77_r
                                            mpifc)
-# NEC compiler names
-set(_MPI_NEC_C_COMPILER_NAMES        mpincc)
-set(_MPI_NEC_CXX_COMPILER_NAMES      mpinc++)
-set(_MPI_NEC_Fortran_COMPILER_NAMES  mpinfort)
 
 # GNU compiler names
 set(_MPI_GNU_C_COMPILER_NAMES              mpigcc mpgcc mpigcc_r mpgcc_r)
@@ -332,6 +328,11 @@ set(_MPI_XL_Fortran_COMPILER_NAMES         mpixlf95   mpixlf95_r mpxlf95 mpxlf95
                                            mpixlf77   mpixlf77_r mpxlf77 mpxlf77_r
                                            mpixlf     mpixlf_r   mpxlf   mpxlf_r)
 
+# NEC compiler names
+set(_MPI_NEC_C_COMPILER_NAMES              mpincc)
+set(_MPI_NEC_CXX_COMPILER_NAMES            mpinc++)
+set(_MPI_NEC_Fortran_COMPILER_NAMES        mpinfort)
+
 # Prepend vendor-specific compiler wrappers to the list. If we don't know the compiler,
 # attempt all of them.
 # By attempting vendor-specific compiler names first, we should avoid situations where the compiler wrapper
@@ -341,7 +342,7 @@ set(_MPI_XL_Fortran_COMPILER_NAMES         mpixlf95   mpixlf95_r mpxlf95 mpxlf95
 # pick up the right settings for it.
 foreach (LANG IN ITEMS C CXX Fortran)
   set(_MPI_${LANG}_COMPILER_NAMES "")
-  foreach (id IN ITEMS GNU Intel IntelLLVM MSVC NEC PGI XL)
+  foreach (id IN ITEMS GNU Intel IntelLLVM MSVC NEC PGI XL NEC)
     if (NOT CMAKE_${LANG}_COMPILER_ID OR CMAKE_${LANG}_COMPILER_ID STREQUAL id)
       foreach(_COMPILER_NAME IN LISTS _MPI_${id}_${LANG}_COMPILER_NAMES)
         list(APPEND _MPI_${LANG}_COMPILER_NAMES ${_COMPILER_NAME}${MPI_EXECUTABLE_SUFFIX})
@@ -367,6 +368,37 @@ foreach(_MPIEXEC_NAME IN LISTS _MPIEXEC_NAMES_BASE)
   list(APPEND _MPIEXEC_NAMES "${_MPIEXEC_NAME}${MPI_EXECUTABLE_SUFFIX}")
 endforeach()
 unset(_MPIEXEC_NAMES_BASE)
+
+function (_MPI_check_compiler_compile LANG QUERY_FLAG OUTPUT_VARIABLE RESULT_VARIABLE)
+  if(DEFINED MPI_${LANG}_COMPILER_FLAGS)
+    separate_arguments(_MPI_COMPILER_WRAPPER_OPTIONS NATIVE_COMMAND "${MPI_${LANG}_COMPILER_FLAGS}")
+  else()
+    separate_arguments(_MPI_COMPILER_WRAPPER_OPTIONS NATIVE_COMMAND "${MPI_COMPILER_FLAGS}")
+  endif()
+  execute_process(
+    COMMAND ${MPI_${LANG}_COMPILER} ${_MPI_COMPILER_WRAPPER_OPTIONS} -c foo.c ${QUERY_FLAG}
+    OUTPUT_VARIABLE  WRAPPER_OUTPUT OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_VARIABLE   WRAPPER_OUTPUT ERROR_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE  WRAPPER_RETURN)
+  # Some compiler wrappers will yield spurious zero return values, for example
+  # Intel MPI tolerates unknown arguments and if the MPI wrappers loads a shared
+  # library that has invalid or missing version information there would be warning
+  # messages emitted by ld.so in the compiler output. In either case, we'll treat
+  # the output as invalid.
+  if("${WRAPPER_OUTPUT}" MATCHES "undefined reference|unrecognized|need to set|no version information available|command not found")
+    set(WRAPPER_RETURN 255)
+  endif()
+  # Ensure that no error output might be passed upwards.
+  if(NOT WRAPPER_RETURN EQUAL 0)
+    unset(WRAPPER_OUTPUT)
+  else()
+    # Strip leading whitespace
+    string(REGEX REPLACE "^ +" "" WRAPPER_OUTPUT "${WRAPPER_OUTPUT}")
+  endif()
+  string(REGEX REPLACE "-c foo.c" "" WRAPPER_OUTPUT "${WRAPPER_OUTPUT}")
+  set(${OUTPUT_VARIABLE} "${WRAPPER_OUTPUT}" PARENT_SCOPE)
+  set(${RESULT_VARIABLE} "${WRAPPER_RETURN}" PARENT_SCOPE)
+endfunction()
 
 function (_MPI_check_compiler LANG QUERY_FLAG OUTPUT_VARIABLE RESULT_VARIABLE)
   if(DEFINED MPI_${LANG}_COMPILER_FLAGS)
@@ -490,7 +522,22 @@ function (_MPI_interrogate_compiler LANG)
   # MPICH, MVAPICH2 and Intel MPI just use "-show". Open MPI also offers this, but the
   # -showme commands are more specialized.
   if (NOT MPI_COMPILER_RETURN EQUAL 0)
-    _MPI_check_compiler(${LANG} "-show" MPI_COMPILE_CMDLINE MPI_COMPILER_RETURN)
+    if(NOT __COMPILER_NEC)
+      _MPI_check_compiler(${LANG} "-show" MPI_COMPILE_CMDLINE MPI_COMPILER_RETURN)
+    else()
+      # NEC MPI wrappers don't show include files if '-c' option is not passed on
+      # command line
+      _MPI_check_compiler_compile(${LANG} "-show" MPI_COMPILE_CMDLINE MPI_COMPILER_RETURN)
+
+      if (MPI_COMPILER_RETURN EQUAL 0)
+        # NEC MPI wrappers will show only link command line here.
+        _MPI_check_compiler(${LANG} "-show" MPI_LINK_CMDLINE MPI_COMPILER_RETURN)
+
+        if (NOT MPI_COMPILER_RETURN EQUAL 0)
+          unset(MPI_COMPILE_CMDLINE)
+        endif()
+      endif()
+    endif()
   endif()
 
   # Older versions of LAM/MPI have "-showme". Open MPI also supports this.
@@ -708,7 +755,12 @@ function (_MPI_interrogate_compiler LANG)
     string(REGEX REPLACE "(^| )-Xlinker +-z +-Xlinker +[^ ]+" "" MPI_LINK_CMDLINE_FILTERED "${MPI_LINK_CMDLINE_FILTERED}")
 
     # We only consider options of the form -Wl or -Xlinker:
-    string(REGEX MATCHALL "(^| )(-Wl,|-Xlinker +)([^\" ]+|\"[^\"]+\")" MPI_ALL_LINK_FLAGS "${MPI_LINK_CMDLINE_FILTERED}")
+    if(NOT __COMPILER_NEC)
+      string(REGEX MATCHALL "(^| )(-Wl,|-Xlinker +)([^\" ]+|\"[^\"]+\")" MPI_ALL_LINK_FLAGS "${MPI_LINK_CMDLINE_FILTERED}")
+    else()
+      # For NEC MPI we need to keep -proginf/-pthread/*.o linker flags
+      string(REGEX MATCHALL "(^| )(-Wl,|-Xlinker +)([^\" ]+|\"[^\"]+\")|(^| )-proginf|(^| )-pthread|(^| )/[^ ]+\\.o" MPI_ALL_LINK_FLAGS "${MPI_LINK_CMDLINE_FILTERED}")
+    endif()
 
     # As a next step, we assemble the linker flags extracted in a preliminary flags string
     foreach(_MPI_LINK_FLAG IN LISTS MPI_ALL_LINK_FLAGS)
