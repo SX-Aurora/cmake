@@ -276,6 +276,10 @@ set(_MPI_Fortran_GENERIC_COMPILER_NAMES    mpif95   mpif95_r  mpf95   mpf95_r
                                            mpif90   mpif90_r  mpf90   mpf90_r
                                            mpif77   mpif77_r  mpf77   mpf77_r
                                            mpifc)
+# NEC compiler names
+set(_MPI_NEC_C_COMPILER_NAMES        mpincc)
+set(_MPI_NEC_CXX_COMPILER_NAMES      mpinc++)
+set(_MPI_NEC_Fortran_COMPILER_NAMES  mpinfort)
 
 # GNU compiler names
 set(_MPI_GNU_C_COMPILER_NAMES              mpigcc mpgcc mpigcc_r mpgcc_r)
