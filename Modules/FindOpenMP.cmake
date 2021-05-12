@@ -116,6 +116,7 @@ function(_OPENMP_FLAG_CANDIDATES LANG)
     set(OMP_FLAG_IntelLLVM "-fiopenmp")
     set(OMP_FLAG_MSVC "-openmp")
     set(OMP_FLAG_PathScale "-openmp")
+    set(OMP_FLAG_NEC "-fopenmp")
     set(OMP_FLAG_NAG "-openmp")
     set(OMP_FLAG_Absoft "-openmp")
     set(OMP_FLAG_NVHPC "-mp")
@@ -125,8 +126,6 @@ function(_OPENMP_FLAG_CANDIDATES LANG)
     set(OMP_FLAG_XL "-qsmp=omp")
     # Cray compiler activate OpenMP with -h omp, which is enabled by default.
     set(OMP_FLAG_Cray " " "-h omp")
-
-    set(OMP_FLAG_NEC "-fopenmp")
 
     # If we know the correct flags, use those
     if(DEFINED OMP_FLAG_${CMAKE_${LANG}_COMPILER_ID})
@@ -577,8 +576,17 @@ foreach(LANG IN LISTS OpenMP_FINDLIST)
           INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${OpenMP_${LANG}_INCLUDE_DIRS}>")
       endif()
       if(OpenMP_${LANG}_LIBRARIES)
-        set_property(TARGET OpenMP::OpenMP_${LANG} PROPERTY
-          INTERFACE_LINK_LIBRARIES "${OpenMP_${LANG}_LIBRARIES}")
+        if(CMAKE_${LANG}_COMPILER_ID STREQUAL "NEC")
+          # Hack to use -fopenmp flag at link step instead of trying to find all libraries:
+          # NEC compilers link with internal object files that are different if OpenMP
+          # is enabled or not... Better to let compiler doing the job, instead of guessing what to do...
+          # This is even more true when mixing C,C++ and Fortran...
+          set_property(TARGET OpenMP::OpenMP_${LANG} PROPERTY
+            INTERFACE_LINK_LIBRARIES "-fopenmp")
+        else()
+          set_property(TARGET OpenMP::OpenMP_${LANG} PROPERTY
+            INTERFACE_LINK_LIBRARIES "${OpenMP_${LANG}_LIBRARIES}")
+        endif()
       endif()
     endif()
   endif()
