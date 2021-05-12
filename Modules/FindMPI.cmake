@@ -337,7 +337,7 @@ set(_MPI_XL_Fortran_COMPILER_NAMES         mpixlf95   mpixlf95_r mpxlf95 mpxlf95
 # pick up the right settings for it.
 foreach (LANG IN ITEMS C CXX Fortran)
   set(_MPI_${LANG}_COMPILER_NAMES "")
-  foreach (id IN ITEMS GNU Intel IntelLLVM MSVC PGI XL)
+  foreach (id IN ITEMS GNU Intel IntelLLVM MSVC NEC PGI XL)
     if (NOT CMAKE_${LANG}_COMPILER_ID OR CMAKE_${LANG}_COMPILER_ID STREQUAL id)
       foreach(_COMPILER_NAME IN LISTS _MPI_${id}_${LANG}_COMPILER_NAMES)
         list(APPEND _MPI_${LANG}_COMPILER_NAMES ${_COMPILER_NAME}${MPI_EXECUTABLE_SUFFIX})

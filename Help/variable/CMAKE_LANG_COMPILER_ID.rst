@@ -27,6 +27,7 @@ include:
   Intel = Intel Compiler (intel.com)
   IntelLLVM = Intel LLVM-Based Compiler (intel.com)
   MSVC = Microsoft Visual Studio (microsoft.com)
+  NEC = NEC Compiler (nec.com)
   NVHPC = NVIDIA HPC SDK Compiler (nvidia.com)
   NVIDIA = NVIDIA CUDA Compiler (nvidia.com)
   OpenWatcom = Open Watcom (openwatcom.org)
