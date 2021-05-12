@@ -51,6 +51,7 @@ else()
       #  fort77: native F77 compiler under HP-UX (and some older Crays)
       #  frt: Fujitsu F77 compiler
       #  pathf90/pathf95/pathf2003: PathScale Fortran compiler
+      #  nfort: NEC Fortran compiler
       #  pgf77/pgf90/pgf95/pgfortran: Portland Group F77/F90/F95 compilers
       #  flang: Flang Fortran compiler
       #  xlf/xlf90/xlf95: IBM (AIX) F77/F90/F95 compilers
@@ -77,6 +78,7 @@ else()
       else()
         set(CMAKE_Fortran_COMPILER_LIST
           ftn
+          nfort ftn
           ifort ifc ifx efc pgf95 pgfortran lf95 xlf95 fort
           flang gfortran gfortran-4 g95 f90 pgf90
           frt pgf77 xlf g77 f77 nag
@@ -90,6 +92,7 @@ else()
       set(_Fortran_COMPILER_NAMES_PGI       pgf95 pgfortran pgf90 pgf77)
       set(_Fortran_COMPILER_NAMES_Flang     flang)
       set(_Fortran_COMPILER_NAMES_PathScale pathf2003 pathf95 pathf90)
+      set(_Fortran_COMPILER_NAMES_NEC       nfort)
       set(_Fortran_COMPILER_NAMES_XL        xlf)
       set(_Fortran_COMPILER_NAMES_VisualAge xlf95 xlf90 xlf)
       set(_Fortran_COMPILER_NAMES_NAG       nagfor)

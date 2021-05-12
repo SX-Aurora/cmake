@@ -172,6 +172,15 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
         endif()
       endif()
 
+      # Do not try to guess link libraries used by NEC compilers internaly.
+      # This will end-up with errors at runtime when mixing C,C++,Fortran
+      # when OpenMP is enabled.
+      if(__COMPILER_NEC)
+        set(implicit_libs "")
+        set(implicit_dirs "")
+        set(implicit_fwks "")
+      endif()
+
       set(CMAKE_${lang}_IMPLICIT_LINK_LIBRARIES "${implicit_libs}" PARENT_SCOPE)
       set(CMAKE_${lang}_IMPLICIT_LINK_DIRECTORIES "${implicit_dirs}" PARENT_SCOPE)
       set(CMAKE_${lang}_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES "${implicit_fwks}" PARENT_SCOPE)
