@@ -585,6 +585,29 @@ if(NOT LAPACK_NOT_FOUND_MESSAGE)
     )
   endif()
 
+  # NEC NLC LAPACK library?
+  if(NOT LAPACK_LIBRARIES
+      AND (BLA_VENDOR MATCHES "NEC" OR BLA_VENDOR STREQUAL "All"))
+    if(BLA_VENDOR MATCHES "NEC" AND NOT DEFINED ENV{NLC_HOME})
+      message(FATAL_ERROR "FindLAPACK requires NLC_HOME to be set if BLA_VENDOR is set to NEC.")
+    endif()
+    if(DEFINED ENV{NLC_HOME})
+      file(TO_CMAKE_PATH "$ENV{NLC_HOME}/lib" LAPAKC_nec_NLC_LIB)
+    endif()
+
+    check_lapack_libraries(
+      LAPACK_LIBRARIES
+      LAPACK
+      cheev
+      ""
+      "lapack"
+      ""
+      "${LAPACK_nec_NLC_LIB}"
+      ""
+      "${BLAS_LIBRARIES}"
+    )
+  endif()
+
   # Generic LAPACK library?
   if(NOT LAPACK_LIBRARIES
       AND (BLA_VENDOR STREQUAL "Generic"

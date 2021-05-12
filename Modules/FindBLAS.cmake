@@ -55,6 +55,10 @@ The following variables may be set to influence this module's behavior:
   * ``Arm_ilp64_mp``
   * ``EML``
   * ``EML_mt``
+  * ``NEC``
+  * ``NEC_mp``
+  * ``NEC_i64``
+  * ``NEC_i64_mp``
   * ``Generic``
 
   .. versionadded:: 3.6
@@ -1014,6 +1018,54 @@ if(BLA_VENDOR MATCHES "EML" OR BLA_VENDOR STREQUAL "All")
       )
   endif()
 
+endif()
+
+# NEC NLC BLAS library?
+if(BLA_VENDOR MATCHES "NEC" OR BLA_VENDOR STREQUAL "All")
+  if(NOT BLAS_LIBRARIES)
+    if(BLA_VENDOR MATCHES "NEC" AND NOT DEFINED ENV{NLC_HOME})
+      message(FATAL_ERROR "FindBLAS requires NLC_HOME to be set if BLA_VENDOR is set to NEC.")
+    endif()
+    if(DEFINED ENV{NLC_HOME})
+      file(TO_CMAKE_PATH "$ENV{NLC_HOME}/lib" BLAS_nec_NLC_LIB)
+    endif()
+
+    # Check for OpenMP support (BLA_VENDOR="NEC_mp")
+    if(BLA_VENDOR MATCHES "_mp")
+      set(BLAS_nec_LIB "blas_openmp")
+      set(BLAS_nec_OMP "-fopenmp")
+    else()
+      set(BLAS_nec_LIB "blas_sequential")
+    endif()
+
+    # Check for 64-bit integer support (NLC_LIB_I64=1 or BLA_VENDOR="NEC_i64")
+    if(BLA_VENDOR MATCHES "_i64")
+      if(NOT DEFINED ENV{NLC_LIB_I64})
+        message(FATAL_ERROR "FindBLAS requires NLC_LIB_I64 to be set if BLA_VENDOR is set to NEC_i64.")
+      endif()
+      if(NOT "$ENV{NLC_LIB_I64}" STREQUAL "1")
+        message(FATAL_ERROR "FindBLAS requires NLC_LIB_I64=1 if BLA_VENDOR is set to NEC_i64: please load NLC environment with i64 support.")
+      endif()
+      set(BLAS_nec_LIB "${BLAS_nec_LIB}_ia64")
+    else()
+      if(DEFINED ENV{NLC_LIB_I64})
+        if(NOT "$ENV{NLC_LIB_I64}" STREQUAL "0")
+          message(FATAL_ERROR "FindBLAS requires NLC_LIB_I64=0 if BLA_VENDOR is not set to NEC_i64: please load NLC environment without i64 support.")
+        endif()
+      endif()
+    endif()
+
+    check_blas_libraries(
+      BLAS_LIBRARIES
+      BLAS
+      sgemm
+      ""
+      "${BLAS_nec_LIB}"
+      "${BLAS_nec_OMP}"
+      "${BLAS_nec_NLC_LIB}"
+      ""
+      )
+  endif()
 endif()
 
 # Generic BLAS library?
